@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liked Songs Exporter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Unbounded:wght@300;700;900&display=swap');
+
+  :root {
+    --green: #1DB954;
+    --black: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #2a2a2a;
+    --text: #e8e8e8;
+    --muted: #666;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header { margin-bottom: 48px; }
+
+  .eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--green);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 900;
+    font-size: clamp(28px, 5vw, 52px);
+    line-height: 1;
+    color: #fff;
+    margin-bottom: 16px;
+  }
+
+  h1 span { color: var(--green); }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+    max-width: 520px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 32px;
+    margin-bottom: 16px;
+  }
+
+  .panel-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .steps {
+    counter-reset: step;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .step {
+    counter-increment: step;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .step::before {
+    content: counter(step);
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--black);
+    background: var(--green);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+
+  .step strong { color: var(--text); display: block; }
+  .step a { color: var(--green); text-decoration: none; }
+  .step a:hover { text-decoration: underline; }
+
+  .code-tag {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--green);
+    padding: 2px 10px;
+    font-size: 11px;
+    border-radius: 2px;
+    font-family: 'DM Mono', monospace;
+    word-break: break-all;
+    display: inline-block;
+    margin-top: 4px;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+
+  label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  input:focus { border-color: var(--green); }
+  input::placeholder { color: var(--muted); }
+
+  .btn {
+    border: none;
+    padding: 13px 24px;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+
+  .btn-primary { background: var(--green); color: var(--black); }
+  .btn-primary:hover { background: #1ed760; }
+  .btn-primary:disabled { background: var(--muted); cursor: not-allowed; }
+  .btn-primary:active { transform: scale(0.98); }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-outline:hover { border-color: var(--green); color: var(--green); }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .status-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
+    padding: 14px 20px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .status-bar.visible { display: flex; }
+  .status-bar.error { border-left-color: #e74c3c; color: #e74c3c; }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress-wrap { display: none; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .progress-wrap.visible { display: flex; }
+  .progress-label { font-size: 11px; color: var(--muted); }
+  .progress-track { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.4s ease; width: 0%; }
+
+  .tab-bar { display: flex; gap: 2px; margin-bottom: 16px; }
+
+  .tab {
+    padding: 10px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+
+  .tab.active { background: var(--green); color: var(--black); border-color: var(--green); font-weight: 500; }
+
+  .results-panel { display: none; }
+  .results-panel.visible { display: block; }
+
+  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+  .results-meta { display: flex; flex-direction: column; gap: 4px; }
+  .results-title { font-family: 'Unbounded', sans-serif; font-size: 11px; font-weight: 700; color: var(--green); letter-spacing: 0.1em; text-transform: uppercase; }
+  .results-count { font-size: 11px; color: var(--muted); }
+
+  .search-wrap { margin-bottom: 12px; }
+
+  .song-list { display: flex; flex-direction: column; gap: 1px; max-height: 460px; overflow-y: auto; }
+  .song-list::-webkit-scrollbar { width: 4px; }
+  .song-list::-webkit-scrollbar-track { background: var(--surface); }
+  .song-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .song-item {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid transparent;
+    transition: border-color 0.15s, background 0.15s;
+    animation: fadeIn 0.3s ease both;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; } }
+
+  .song-item:hover { background: var(--surface2); border-color: var(--border); }
+  .song-num { font-size: 11px; color: var(--muted); text-align: right; }
+  .song-info { min-width: 0; }
+  .song-title { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+  .song-artist { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .song-duration { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+
+  .playlist-success { display: none; background: var(--surface); border: 1px solid var(--green); padding: 28px 32px; margin-bottom: 16px; }
+  .playlist-success.visible { display: block; }
+  .playlist-success h3 { font-family: 'Unbounded', sans-serif; font-size: 13px; color: var(--green); margin-bottom: 8px; }
+  .playlist-success p { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  .playlist-link {
+    display: inline-block;
+    background: var(--green);
+    color: var(--black);
+    padding: 10px 20px;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 2px;
+  }
+  .playlist-link:hover { background: #1ed760; }
+
+  .callback-notice { background: var(--surface); border: 1px solid var(--green); padding: 32px; text-align: center; display: none; margin-bottom: 16px; }
+  .callback-notice.visible { display: block; }
+  .callback-notice h3 { font-family: 'Unbounded', sans-serif; font-size: 14px; color: var(--green); margin-bottom: 8px; }
+  .callback-notice p { font-size: 12px; color: var(--muted); }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="eyebrow">// Spotify Tool</div>
+    <h1>LIKED<br><span>SONGS</span><br>EXPORTER</h1>
+    <p class="subtitle">Extract your entire Spotify liked songs library — export it, share it, or push it directly to a shareable Spotify playlist.</p>
+  </header>
+
+  <div class="callback-notice" id="callbackNotice">
+    <h3>✓ Authenticated</h3>
+    <p>Exchanging code for access token...</p>
+  </div>
+
+  <div class="panel" id="setupPanel">
+    <div class="panel-title">// Connect Spotify</div>
+    <div class="steps">
+      <div class="step">
+        <div>
+          <strong>Create a free Spotify app</strong>
+          Go to <a href="https://developer.spotify.com/dashboard" target="_blank">developer.spotify.com/dashboard</a> → Create app → check <strong>Web API</strong>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <strong>Add this exact Redirect URI in your app settings:</strong>
+          <br><span class="code-tag" id="redirectUriDisplay">loading...</span>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <strong>Copy your Client ID and paste below</strong>
+          No secret needed — this uses the secure PKCE flow, entirely in your browser.
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Client ID</label>
+      <input type="text" id="clientId" placeholder="e.g. 4b2c7f1a3e8d..." />
+    </div>
+    <button class="btn btn-primary" onclick="connectSpotify()">Connect with Spotify →</button>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <div class="spinner" id="spinner"></div>
+    <span id="statusText"></span>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-label" id="progressLabel">Fetching songs...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <div class="results-panel" id="resultsPanel">
+    <div class="tab-bar">
+      <button class="tab active" id="tab-list" onclick="switchTab('list')">Song List</button>
+      <button class="tab" id="tab-playlist" onclick="switchTab('playlist')">Push to Playlist</button>
+      <button class="tab" id="tab-export" onclick="switchTab('export')">Export</button>
+    </div>
+
+    <div id="view-list">
+      <div class="panel">
+        <div class="results-header">
+          <div class="results-meta">
+            <div class="results-title">// Your Liked Songs</div>
+            <div class="results-count" id="resultsCount"></div>
+          </div>
+        </div>
+        <div class="search-wrap">
+          <input type="text" id="searchInput" placeholder="Filter by title, artist or album..." oninput="filterSongs()" />
+        </div>
+        <div class="song-list" id="songList"></div>
+      </div>
+    </div>
+
+    <div id="view-playlist" style="display:none">
+      <div class="playlist-success" id="playlistSuccess">
+        <h3>✓ Playlist Created!</h3>
+        <p id="playlistSuccessMsg"></p>
+        <a href="#" id="playlistLink" class="playlist-link" target="_blank">Open Playlist in Spotify →</a>
+      </div>
+      <div class="panel" id="playlistForm">
+        <div class="panel-title">// Create Shareable Playlist</div>
+        <p style="font-size:12px; color:var(--muted); margin-bottom:24px; line-height:1.7;">
+          This will create a new <strong style="color:var(--text)">public playlist</strong> on your Spotify account containing all your liked songs. Anyone with the link can follow it.
+        </p>
+        <div class="field">
+          <label>Playlist Name</label>
+          <input type="text" id="playlistName" value="My Liked Songs" />
+        </div>
+        <div class="field">
+          <label>Description (optional)</label>
+          <input type="text" id="playlistDesc" placeholder="Exported from my liked songs" />
+        </div>
+        <hr class="divider">
+        <div style="font-size:12px; color:var(--muted); margin-bottom:16px;" id="playlistSongCount"></div>
+        <button class="btn btn-primary" id="pushBtn" onclick="pushToPlaylist()">Create Playlist & Add All Songs →</button>
+      </div>
+    </div>
+
+    <div id="view-export" style="display:none">
+      <div class="panel">
+        <div class="panel-title">// Export Your List</div>
+        <p style="font-size:12px; color:var(--muted); margin-bottom:24px; line-height:1.7;">
+          Download your liked songs as a file, or copy the full list to paste anywhere.
+        </p>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="exportCSV()">Download CSV</button>
+          <button class="btn btn-outline" onclick="exportTXT()">Download TXT</button>
+          <button class="btn btn-outline" onclick="copyAll(this)">Copy All to Clipboard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const REDIRECT_URI = window.location.href.split('?')[0].split('#')[0];
+  document.getElementById('redirectUriDisplay').textContent = REDIRECT_URI;
+
+  let allSongs = [];
+  let accessToken = null;
+  let userId = null;
+
+  // ── PKCE helpers ──────────────────────────────────────────────
+  function generateRandom(len) {
+    const arr = new Uint8Array(len);
+    crypto.getRandomValues(arr);
+    return Array.from(arr, b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function sha256(plain) {
+    const enc = new TextEncoder().encode(plain);
+    return crypto.subtle.digest('SHA-256', enc);
+  }
+
+  function base64URLEncode(buf) {
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+
+  async function generatePKCE() {
+    const verifier = generateRandom(32);
+    const challenge = base64URLEncode(await sha256(verifier));
+    return { verifier, challenge };
+  }
+
+  // ── Auth ──────────────────────────────────────────────────────
+  async function connectSpotify() {
+    const clientId = document.getElementById('clientId').value.trim();
+    if (!clientId) { showStatus('Please enter your Client ID first.', 'error'); return; }
+    localStorage.setItem('spotify_client_id', clientId);
+
+    const { verifier, challenge } = await generatePKCE();
+    localStorage.setItem('pkce_verifier', verifier);
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      response_type: 'code',
+      redirect_uri: REDIRECT_URI,
+      scope: 'user-library-read playlist-modify-public playlist-modify-private',
+      code_challenge_method: 'S256',
+      code_challenge: challenge,
+    });
+
+    window.location.href = 'https://accounts.spotify.com/authorize?' + params.toString();
+  }
+
+  async function exchangeCodeForToken(code) {
+    const clientId = localStorage.getItem('spotify_client_id');
+    const verifier = localStorage.getItem('pkce_verifier');
+
+    const body = new URLSearchParams({
+      client_id: clientId,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: REDIRECT_URI,
+      code_verifier: verifier,
+    });
+
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error_description || 'Token exchange failed');
+    }
+
+    const data = await res.json();
+    localStorage.removeItem('pkce_verifier');
+    return data.access_token;
+  }
+
+  // ── On page load ──────────────────────────────────────────────
+  window.addEventListener('load', async () => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const error = params.get('error');
+
+    if (error) {
+      showStatus('Spotify auth cancelled: ' + error, 'error');
+      return;
+    }
+
+    if (code) {
+      document.getElementById('setupPanel').style.display = 'none';
+      document.getElementById('callbackNotice').classList.add('visible');
+      history.replaceState(null, '', window.location.pathname);
+
+      try {
+        accessToken = await exchangeCodeForToken(code);
+        await fetchAllLikedSongs();
+      } catch (err) {
+        showStatus(err.message, 'error');
+        document.getElementById('callbackNotice').style.display = 'none';
+        document.getElementById('setupPanel').style.display = 'block';
+      }
+      return;
+    }
+
+    const saved = localStorage.getItem('spotify_client_id');
+    if (saved) document.getElementById('clientId').value = saved;
+  });
+
+  // ── Utilities ─────────────────────────────────────────────────
+  function showStatus(msg, type = 'loading') {
+    const bar = document.getElementById('statusBar');
+    bar.className = 'status-bar visible' + (type !== 'loading' ? ' ' + type : '');
+    document.getElementById('statusText').textContent = msg;
+    document.getElementById('spinner').style.display = type === 'loading' ? 'block' : 'none';
+  }
+
+  function hideStatus() { document.getElementById('statusBar').classList.remove('visible'); }
+
+  function setProgress(pct, label) {
+    document.getElementById('progressWrap').classList.add('visible');
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = label;
+  }
+
+  function hideProgress() { document.getElementById('progressWrap').classList.remove('visible'); }
+
+  async function spotifyGet(url) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!res.ok) throw new Error(`Spotify API error ${res.status}`);
+    return res.json();
+  }
+
+  // ── Fetch liked songs ─────────────────────────────────────────
+  async function fetchAllLikedSongs() {
+    allSongs = [];
+    let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
+    let total = null;
+
+    const profile = await spotifyGet('https://api.spotify.com/v1/me');
+    userId = profile.id;
+
+    while (url) {
+      const data = await spotifyGet(url);
+      if (total === null) total = data.total;
+
+      for (const item of data.items) {
+        if (item.track) {
+          allSongs.push({
+            title: item.track.name,
+            artist: item.track.artists.map(a => a.name).join(', '),
+            album: item.track.album.name,
+            duration: msToTime(item.track.duration_ms),
+            added: item.added_at ? item.added_at.split('T')[0] : '',
+            uri: item.track.uri,
+            spotifyUrl: item.track.external_urls?.spotify || ''
+          });
+        }
+      }
+
+      setProgress(Math.round((allSongs.length / total) * 100),
+        `Fetching songs… ${allSongs.length} / ${total}`);
+      url = data.next;
+    }
+
+    hideProgress();
+    document.getElementById('callbackNotice').style.display = 'none';
+    hideStatus();
+    renderResults();
+  }
+
+  function msToTime(ms) {
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  // ── Render ────────────────────────────────────────────────────
+  function renderResults(songs = allSongs) {
+    document.getElementById('resultsPanel').classList.add('visible');
+    document.getElementById('resultsCount').textContent =
+      `${allSongs.length} songs total${songs.length !== allSongs.length ? `, showing ${songs.length}` : ''}`;
+    document.getElementById('playlistSongCount').textContent =
+      `${allSongs.length} songs will be added to the playlist.`;
+
+    const list = document.getElementById('songList');
+    list.innerHTML = '';
+    songs.forEach((song, i) => {
+      const item = document.createElement('div');
+      item.className = 'song-item';
+      item.style.animationDelay = `${Math.min(i * 8, 240)}ms`;
+      item.innerHTML = `
+        <div class="song-num">${i + 1}</div>
+        <div class="song-info">
+          <div class="song-title">${esc(song.title)}</div>
+          <div class="song-artist">${esc(song.artist)} · ${esc(song.album)}</div>
+        </div>
+        <div class="song-duration">${song.duration}</div>`;
+      list.appendChild(item);
+    });
+  }
+
+  function filterSongs() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    renderResults(q ? allSongs.filter(s =>
+      s.title.toLowerCase().includes(q) ||
+      s.artist.toLowerCase().includes(q) ||
+      s.album.toLowerCase().includes(q)
+    ) : allSongs);
+  }
+
+  function switchTab(name) {
+    ['list','playlist','export'].forEach(t => {
+      document.getElementById('view-' + t).style.display = t === name ? 'block' : 'none';
+      document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    });
+  }
+
+  // ── Create playlist ───────────────────────────────────────────
+  async function pushToPlaylist() {
+    const name = document.getElementById('playlistName').value.trim() || 'My Liked Songs';
+    const desc = document.getElementById('playlistDesc').value.trim() || 'Exported from my liked songs';
+    const btn = document.getElementById('pushBtn');
+    btn.disabled = true;
+    btn.textContent = 'Creating playlist…';
+
+    try {
+      showStatus('Creating playlist…');
+      const createRes = await fetch(`https://api.spotify.com/v1/me/playlists`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description: desc, public: true })
+      });
+      if (!createRes.ok) throw new Error('Failed to create playlist');
+      const playlist = await createRes.json();
+      const playlistId = playlist.id;
+      const playlistUrl = playlist.external_urls?.spotify;
+
+      const uris = allSongs.map(s => s.uri);
+      const batches = [];
+      for (let i = 0; i < uris.length; i += 100) batches.push(uris.slice(i, i + 100));
+
+      for (let b = 0; b < batches.length; b++) {
+        setProgress(Math.round(((b+1)/batches.length)*100), `Adding songs… batch ${b+1} / ${batches.length}`);
+        showStatus(`Adding songs… ${Math.min((b+1)*100, uris.length)} / ${uris.length}`);
+        const addRes = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uris: batches[b] })
+        });
+        if (!addRes.ok) throw new Error(`Failed adding batch ${b+1}`);
+      }
+
+      hideProgress(); hideStatus();
+      document.getElementById('playlistForm').style.display = 'none';
+      document.getElementById('playlistSuccess').classList.add('visible');
+      document.getElementById('playlistSuccessMsg').textContent =
+        `"${name}" was created with ${allSongs.length} songs and is now public on Spotify.`;
+      document.getElementById('playlistLink').href = playlistUrl;
+
+    } catch (err) {
+      hideProgress();
+      showStatus(err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Create Playlist & Add All Songs →';
+    }
+  }
+
+  // ── Export ────────────────────────────────────────────────────
+  function exportCSV() {
+    const header = 'Title,Artist,Album,Duration,Date Added,Spotify URL\n';
+    const rows = allSongs.map(s =>
+      [s.title,s.artist,s.album,s.duration,s.added,s.spotifyUrl]
+        .map(v=>`"${(v||'').replace(/"/g,'""')}"`)
+        .join(',')
+    ).join('\n');
+    download('liked_songs.csv', header + rows, 'text/csv');
+  }
+
+  function exportTXT() {
+    download('liked_songs.txt',
+      allSongs.map((s,i)=>`${String(i+1).padStart(4,' ')}. ${s.title} — ${s.artist}`).join('\n'),
+      'text/plain');
+  }
+
+  function copyAll(btn) {
+    navigator.clipboard.writeText(
+      allSongs.map((s,i)=>`${i+1}. ${s.title} — ${s.artist}`).join('\n')
+    ).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      setTimeout(() => btn.textContent = orig, 2000);
+    });
+  }
+
+  function download(filename, content, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type }));
+    a.download = filename;
+    a.click();
+  }
+
+  function esc(str) {
+    return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
